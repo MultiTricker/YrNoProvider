@@ -47,8 +47,10 @@ final class YrnoPresenter extends Nette\Application\UI\Presenter
 
     /**
      * odhackuj=1 -> odstrani diakritiku
+     * days=1..9  -> pocet dni predpovedi v sections (1=dnes+zitra, 2=+pozitri, …)
+     * hours=1..48 -> pocet hodinovych zaznamu
      */
-    public function renderForecast( $lat, $lon, $alt, $odhackuj=false, $mode=0 )
+    public function renderForecast( $lat, $lon, $alt, $odhackuj=false, $mode=0, $days=1, $hours=12 )
     {
         try {
 
@@ -60,16 +62,18 @@ final class YrnoPresenter extends Nette\Application\UI\Presenter
             $lat = number_format( floatval($lat), 3, '.', '' );
             $lon = number_format( floatval($lon), 3, '.', '' );
             $alt = intval( $alt );
-            Logger::log( 'app', Logger::INFO ,  "start {$lat} {$lon} {$alt} odhackuj=" . ($odhackuj ? 'Y' : 'N') );
+            $days  = max( 1, min( intval($days),  9  ) );
+            $hours = max( 1, min( intval($hours), 48 ) );
+            Logger::log( 'app', Logger::INFO ,  "start {$lat} {$lon} {$alt} odhackuj=" . ($odhackuj ? 'Y' : 'N') . " days={$days} hours={$hours}" );
 
             // tohle zavolame vzdy; zajisti nacteni souboru, pokud je potreba
             $data = $this->downloader->getData( $lat, $lon, $alt );
 
-            $key = "o_{$lat}_{$lon}_{$alt}_{$mode}_" . ($odhackuj ? 'Y' : 'N');
+            $key = "o_{$lat}_{$lon}_{$alt}_{$mode}_d{$days}_h{$hours}_" . ($odhackuj ? 'Y' : 'N');
             $rc = $this->cache->get( $key );
             if( $rc==NULL ) {
                 Logger::log( 'app', Logger::INFO ,  "  parse: {$key}" );
-                $rc = $this->parser->parse( $data, $odhackuj, $mode );
+                $rc = $this->parser->parse( $data, $odhackuj, $mode, $days, $hours );
                 $this->cache->put( $key, $rc,  [
                         Cache::EXPIRE => '9 minutes'
                     ]
